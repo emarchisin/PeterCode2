@@ -13,7 +13,7 @@ from numba import jit
 #os.chdir("/home/robert/Projects/1D-AEMpy/src")
 #os.chdir("C:/Users/ladwi/Documents/Projects/R/1D-AEMpy/src")
 #os.chdir("D:/bensd/Documents/Python_Workspace/1D-AEMpy/src")
-os.chdir("/Users/emmamarchisin/Desktop/Research/Code/Cascade Lakes/Peter Lake")
+os.chdir("/Users/emmamarchisin/Desktop/Research/Code/Cascade Lakes/Peter Lake/PeterCode2")
 from Peter24_processBased_lakeModel_functions import get_hypsography, provide_meteorology, initial_profile, run_wq_model, wq_initial_profile, provide_phosphorus, do_sat_calc, calc_dens #, heating_module, diffusion_module, mixing_module, convection_module, ice_module
 
 
@@ -28,11 +28,11 @@ area, depth, volume = get_hypsography(hypsofile = 'Peter Inputs/peter_bath.csv',
                             dx = dx, nx = nx)
                             
 ## atmospheric boundary conditions
-meteo_all = provide_meteorology(meteofile = '/Users/emmamarchisin/Desktop/Research/Code/Cascade Lakes/All Cascade Lakes/Cascade Inputs/Cascade_2024_all_variables_for_1DAEMpy.csv',
+meteo_all = provide_meteorology(meteofile = 'Peter Inputs/Cascade_2024_all_variables_for_1DAEMpy copy.csv',
                     secchifile = None, 
                     windfactor = 1.0)
 
-pd.DataFrame(meteo_all[0]).to_csv("Peter Parameterization/Test/meteorology_input2.csv", index = False)
+pd.DataFrame(meteo_all[0]).to_csv("Peter Inputs/meteorology_input2.csv", index = False)
                      
 ## time step discretization 
 n_years = 0.05#0.307
