@@ -181,7 +181,8 @@ print(End - Start)
 doc_all = np.add(docl, docr)
 poc_all = np.add(pocl, pocr)
 
-    
+####diagnostic graphs####
+
 plt.plot(times, energy_ratio[0,:])
 plt.ylabel("Energy Ratio", fontsize=15)
 plt.xlabel("Time", fontsize=15)   
