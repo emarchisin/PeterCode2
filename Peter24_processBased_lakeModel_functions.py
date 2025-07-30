@@ -308,7 +308,11 @@ def provide_meteorology(meteofile, secchifile, windfactor):
 
     meteo = pd.read_csv(meteofile)
     daily_meteo = meteo
-    daily_meteo['date'] = pd.to_datetime(daily_meteo['datetime'])
+
+    print(daily_meteo['datetime'])
+
+    #daily_meteo['date'] = pd.to_datetime(daily_meteo['datetime'])
+    daily_meteo['date'] = pd.to_datetime(daily_meteo['datetime'],  format = '%Y-%m-%d %H:%M:%S')
     daily_meteo['Cloud_Cover'] = calc_cc(date = daily_meteo['date'],
                                                 airt = daily_meteo['Air_Temperature_celsius'],
                                                 relh = daily_meteo['Relative_Humidity_percent'],
@@ -317,7 +321,9 @@ def provide_meteorology(meteofile, secchifile, windfactor):
                                                 elev = 516)
 
     
-    daily_meteo['dt'] = (daily_meteo['date'] - daily_meteo['date'][0]).astype('timedelta64[s]') + 1
+    #daily_meteo['dt'] = (daily_meteo['date'] - daily_meteo['date'][0]).astype('timedelta64[s]') + 1
+    time_diff = (daily_meteo['date'] - daily_meteo['date'][0]).astype('timedelta64[s]')
+    daily_meteo['dt'] =time_diff.dt.total_seconds() + 1
     daily_meteo['ea'] = (daily_meteo['Relative_Humidity_percent'] * 
       (4.596 * np.exp((17.27*(daily_meteo['Air_Temperature_celsius'])) /
       (237.3 + (daily_meteo['Air_Temperature_celsius']) ))) / 100)
@@ -370,8 +376,9 @@ def provide_phosphorus(tpfile, startingDate, startTime):
         daily_tp.loc[-1] = [startingDate, 'epi', daily_tp['tp'].iloc[0], startingDate, daily_tp['ditt'].iloc[0]]  # adding a row
         daily_tp.index = daily_tp.index + 1  # shifting index
         daily_tp.sort_index(inplace=True) 
-    daily_tp['dt'] = (daily_tp['date'] - daily_tp['date'].iloc[0]).astype('timedelta64[s]') + startTime 
-
+    #daily_tp['dt'] = (daily_tp['date'] - daily_tp['date'].iloc[0]).astype('timedelta64[s]') + startTime 
+    time_diff = (daily_tp['date'] - daily_tp['date'].iloc[0]).astype('timedelta64[s]')
+    daily_tp['dt'] =time_diff.dt.total_seconds() + startTime
     return(daily_tp)
 
 def initial_profile(initfile, nx, dx, depth, startDate):
@@ -381,6 +388,7 @@ def initial_profile(initfile, nx, dx, depth, startDate):
   obs['datetime'] = pd.to_datetime(obs['datetime'])
   obs['ditt'] = abs(obs['datetime'] - startDate)
   init_df = obs.loc[obs['ditt'] == obs['ditt'].min()]
+  print(init_df.head())
   if max(depth) > init_df.Depth_meter.max():
     lastRow = init_df.loc[init_df.Depth_meter == init_df.Depth_meter.max()]
     init_df = pd.concat([init_df, lastRow], ignore_index=True)
@@ -390,6 +398,7 @@ def initial_profile(initfile, nx, dx, depth, startDate):
   out_depths = depth # these aren't actually at the 0, 1, 2, ... values, actually increment by 1.0412; make sure okay
   u = profile_fun(out_depths)
   
+
   # TODO implement warning about profile vs. met start date
   
   return(u)
@@ -1918,7 +1927,7 @@ def prodcons_module(
         #"Production and destruction term for a simple linear model."
         o2n, docrn, docln, pocrn, pocln = y
         resp_docr, resp_docln, resp_poc = a
-        consumption = consumption
+        consumption = consumption.item()
         p = [[0, 0, 0, 0, 0],
          [0, 0, 0, 0, 0],
          [0, 0, 0, 0, 0],

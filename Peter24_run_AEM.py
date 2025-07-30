@@ -3,7 +3,7 @@ import pandas as pd
 import os
 #import scipy
 from math import pi, exp, sqrt
-from scipy.interpolate import interp1d
+# from scipy.interpolate import interp1d
 from copy import deepcopy
 import datetime
 import matplotlib.pyplot as plt
@@ -13,7 +13,7 @@ from numba import jit
 #os.chdir("/home/robert/Projects/1D-AEMpy/src")
 #os.chdir("C:/Users/ladwi/Documents/Projects/R/1D-AEMpy/src")
 #os.chdir("D:/bensd/Documents/Python_Workspace/1D-AEMpy/src")
-os.chdir("/Users/emmamarchisin/Desktop/Research/Code/Cascade Lakes/Peter Lake/PeterCode2")
+os.chdir("/Users/au740615/Documents/projects/Emma/PeterCode2/")
 from Peter24_processBased_lakeModel_functions import get_hypsography, provide_meteorology, initial_profile, run_wq_model, wq_initial_profile, provide_phosphorus, do_sat_calc, calc_dens #, heating_module, diffusion_module, mixing_module, convection_module, ice_module
 
 
@@ -104,7 +104,7 @@ res = run_wq_model(
     emissivity = 0.97,
     sigma = 5.67e-8,
     sw_factor = 1.0,
-    wind_factor = 1.2, #1.2
+    wind_factor = 0.5, #1.2, #1.2
     at_factor = 1.0,
     turb_factor = 1.0,
     p2 = 1,
@@ -131,7 +131,7 @@ res = run_wq_model(
     settling_rate = 0.1/86400, #0.3 (ms-1)
     sediment_rate = 0.7/86400, #(m s-1)
     piston_velocity = 1.0/86400,
-    light_water = 3.0, #(m-1)
+    light_water = 0.3, #(m-1)
     light_doc = 0.02, #(m-1)
     light_poc = 0.5,
     oc_load_input = (.448*0.5)  * max(area)/24, # 37.3 mmol C m-2d-1=.448gC m-2 d-1 (Cole et al,2006) divided by 24 hr/d
@@ -181,11 +181,50 @@ print(End - Start)
 doc_all = np.add(docl, docr)
 poc_all = np.add(pocl, pocr)
 
-####diagnostic graphs####
-
+""" plt.figure(figsize=(10, 5))
 plt.plot(times, energy_ratio[0,:])
 plt.ylabel("Energy Ratio", fontsize=15)
-plt.xlabel("Time", fontsize=15)   
+plt.xlabel("Time", fontsize=15) 
+plt.show()
+
+print(times)
+print(thermo_dep[0,:])
+plt.figure(figsize=(10, 5))
+plt.plot(times, thermo_dep[0,:]/2)
+plt.ylabel("Thermocline depth", fontsize=15)
+plt.xlabel("Time", fontsize=15) 
+plt.show()
+ """
+
+df_obs = pd.read_csv('Peter Inputs/observed_data.csv',  parse_dates=True)
+df_obs_surf = df_obs[(df_obs['variable'] == 'wtemp') & (df_obs['depth'] == 0.5)]
+df_obs_surf = df_obs_surf.drop(columns=['depth_id'])
+df_obs_surf = df_obs_surf.dropna()
+print(df_obs_surf.head())
+print(df_obs_surf.shape)
+print(df_obs_surf.columns)
+print(df_obs_surf["datetime"])
+print( df_obs_surf["observation"])
+df_obs_surf['datetime'] = pd.to_datetime(df_obs_surf['datetime'], format = 'mixed')
+
+df_obs_bot= df_obs[(df_obs['variable'] == 'wtemp') & (df_obs['depth'] == 6)]
+df_obs_bot = df_obs_bot.drop(columns=['depth_id'])
+df_obs_bot = df_obs_bot.dropna()
+df_obs_bot['datetime'] = pd.to_datetime(df_obs_bot['datetime'], format = 'mixed')
+
+print(u_ini)
+print(depth)
+plt.figure(figsize=(10, 5))
+plt.plot(times, temp[1,:], color= 'blue', label='0.5m Modeled Temp', linestyle= 'solid')
+plt.plot(times, temp[12,:], color= 'blue', label='6m Modeled Temp', linestyle= 'dashed')
+plt.plot(df_obs_surf["datetime"], df_obs_surf["observation"], color= 'red', label='0.5m Observed Temp', linestyle= 'solid')
+plt.plot(df_obs_bot["datetime"], df_obs_bot["observation"], color= 'red', label='6m Observed Temp', linestyle= 'dashed')
+plt.ylabel("Temp.", fontsize=15)
+plt.xlabel("Time", fontsize=15) 
+plt.legend(loc='best')
+plt.show()
+
+
 
 # heatmap of temps  
 N_pts = 30 #how many points on x axis
@@ -198,7 +237,7 @@ ax.contour(np.arange(.5, temp.shape[1]), np.arange(.5, temp.shape[0]), calc_dens
            linestyles = 'dotted')
 ax.set_ylabel("Depth (m)", fontsize=15)
 ax.set_xlabel("Time", fontsize=15)    
-ax.collections[0].colorbar.set_label("Water Temperature  ($^\circ$C)")
+ax.collections[0].colorbar.set_label("Water Temperature  (dC)")
 xticks_ix = np.array(ax.get_xticks()).astype(int)
 time_label = times[xticks_ix]
 nelement = len(times)//N_pts
