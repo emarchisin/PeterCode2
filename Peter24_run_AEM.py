@@ -30,7 +30,11 @@ area, depth, volume = get_hypsography(hypsofile = 'Peter Inputs/2022/peter_bath.
 ## atmospheric boundary conditions
 meteo_all = provide_meteorology(meteofile = 'Peter Inputs/2022/nldas_hourly_Cascade2224.csv',
                     secchifile = None, 
+<<<<<<< HEAD
                     windfactor = 0.5) #1.0
+=======
+                    windfactor = 0.5) #played with this
+>>>>>>> f1edadcf665107e027adc4c465be56432db88a66
 
 pd.DataFrame(meteo_all[0]).to_csv("Peter Inputs/2022/meteorology_input2.csv", index = False)
                      
@@ -110,7 +114,11 @@ res = run_wq_model(
     emissivity = 0.97,
     sigma = 5.67e-8,
     sw_factor = 1.0,
+<<<<<<< HEAD
     wind_factor = 0.5, #1.2, #1.2
+=======
+    wind_factor = 0.5, #1.2
+>>>>>>> f1edadcf665107e027adc4c465be56432db88a66
     at_factor = 1.0,
     turb_factor = 1.0,
     p2 = 1,
