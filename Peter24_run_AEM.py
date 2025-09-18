@@ -3,7 +3,7 @@ import pandas as pd
 import os
 #import scipy
 from math import pi, exp, sqrt
-# from scipy.interpolate import interp1d
+from scipy.interpolate import interp1d
 from copy import deepcopy
 import datetime
 import matplotlib.pyplot as plt
@@ -13,7 +13,7 @@ from numba import jit
 #os.chdir("/home/robert/Projects/1D-AEMpy/src")
 #os.chdir("C:/Users/ladwi/Documents/Projects/R/1D-AEMpy/src")
 #os.chdir("D:/bensd/Documents/Python_Workspace/1D-AEMpy/src")
-os.chdir("/Users/au740615/Documents/projects/Emma/PeterCode2/")
+os.chdir("/Users/emmamarchisin/Desktop/Research/Code/Cascade Lakes/Peter Lake/PeterCode2-RL")
 from Peter24_processBased_lakeModel_functions import get_hypsography, provide_meteorology, initial_profile, run_wq_model, wq_initial_profile, provide_phosphorus, do_sat_calc, calc_dens #, heating_module, diffusion_module, mixing_module, convection_module, ice_module
 
 
@@ -24,22 +24,28 @@ dt = 3600 # 24 hours times 60 min/hour times 60 seconds/min
 dx = zmax/nx # spatial step
 
 ## area and depth values of our lake 
-area, depth, volume = get_hypsography(hypsofile = 'Peter Inputs/peter_bath.csv',
+area, depth, volume = get_hypsography(hypsofile = 'Peter Inputs/2022/peter_bath.csv',
                             dx = dx, nx = nx)
                             
 ## atmospheric boundary conditions
-meteo_all = provide_meteorology(meteofile = 'Peter Inputs/Cascade_2024_all_variables_for_1DAEMpy copy.csv',
+meteo_all = provide_meteorology(meteofile = 'Peter Inputs/2022/nldas_hourly_Cascade2224.csv',
                     secchifile = None, 
-                    windfactor = 1.0)
+                    windfactor = 0.5) #1.0
 
-pd.DataFrame(meteo_all[0]).to_csv("Peter Inputs/meteorology_input2.csv", index = False)
+pd.DataFrame(meteo_all[0]).to_csv("Peter Inputs/2022/meteorology_input2.csv", index = False)
                      
 ## time step discretization 
-n_years = 0.05#0.307
+#n_years = 0.05#0.307
+#hydrodynamic_timestep = 24 * dt
+#total_runtime =  (365 * n_years) * hydrodynamic_timestep/dt  
+#startTime =  1695 # DOY in 2016 * 24 hours- adjust for PYthon starting on 0 index
+#endTime =  4381# * hydrodynamic_timestep/dt) - 1
+#burn in with 2022
+n_years = 2.32#0.307
 hydrodynamic_timestep = 24 * dt
 total_runtime =  (365 * n_years) * hydrodynamic_timestep/dt  
-startTime =  1695 # DOY in 2016 * 24 hours- adjust for PYthon starting on 0 index
-endTime =  4381# * hydrodynamic_timestep/dt) - 1
+startTime =  3759 # DOY in 2016 * 24 hours- adjust for PYthon starting on 0 index, basically inced of start date
+endTime =  24104# * hydrodynamic_timestep/dt) - 1
 
 startingDate = meteo_all[0]['date'][startTime] #* hydrodynamic_timestep/dt]
 endingDate = meteo_all[0]['date'][(endTime-1)]#meteo_all[0]['date'][(startTime + total_runtime)]# * hydrodynamic_timestep/dt -1]
@@ -49,16 +55,16 @@ times = pd.date_range(startingDate, endingDate, freq='H')
 nTotalSteps = int(total_runtime)
 
 ## here we define our initial profile
-u_ini = initial_profile(initfile = 'Peter Inputs/peter_wtemp.csv', nx = nx, dx = dx,
+u_ini = initial_profile(initfile = 'Peter Inputs/2022/peter_wtemph.csv', nx = nx, dx = dx,
                      depth = depth,
                      startDate = startingDate) 
 
-wq_ini = wq_initial_profile(initfile = 'Peter Inputs/peter_driver.csv', nx = nx, dx = dx,
+wq_ini = wq_initial_profile(initfile = 'Peter Inputs/2022/peter_driver2.csv', nx = nx, dx = dx,
                      depth = depth, 
                      volume = volume,
                      startDate = startingDate)
 
-tp_boundary = provide_phosphorus(tpfile ='Peter Inputs/peter_tp.csv', 
+tp_boundary = provide_phosphorus(tpfile ='Peter Inputs/2022/peter_tp2.csv', 
                                  startingDate = startingDate,
                                  startTime = startTime)
 
@@ -125,8 +131,8 @@ res = run_wq_model(
     conversion_constant = 1e-4,#0.1
     sed_sink = -10/ 86400, #0.01 #-.12 , 0.0626
     k_half = 0.5,
-    resp_docr = 0.007/86400, # 0.001 0.0001 (s-1)
-    resp_docl = 0.05/86400, # 0.01 0.05 (s-1)
+    resp_docr =  0.0001/86400, # 0.001 0.0001 (s-1) 0.007/86400
+    resp_docl =0.05/86400 , # 0.01 0.05 (s-1) 0.05/86400
     resp_poc = 0.1/86400, # 0.1 0.001 0.0001 (s-1_)
     settling_rate = 0.1/86400, #0.3 (ms-1)
     sediment_rate = 0.7/86400, #(m s-1)
@@ -134,13 +140,13 @@ res = run_wq_model(
     light_water = 0.3, #(m-1)
     light_doc = 0.02, #(m-1)
     light_poc = 0.5,
-    oc_load_input = (.448*0.5)  * max(area)/24, # 37.3 mmol C m-2d-1=.448gC m-2 d-1 (Cole et al,2006) divided by 24 hr/d
-    hydro_res_time_hr = 1285*24,
-    #outflow_depth = 6.5,
-    prop_oc_docr = 0.762, #0.8 inflow
-    prop_oc_docl = 0.058, #0.05 inflow
-    prop_oc_pocr = 0.06, #0.05 inflow
-    prop_oc_pocl = 0.12, #0.1 inflow
+    oc_load_input =(.456)  * max(area)/24, # 38.0 mmol C m-2d-1=.456gC m-2 d-1 (Cole et al,2006 DIF model) divided by 24 hr/d
+    hydro_res_time_hr = 365*24,#1285?
+    outflow_depth = 0.5,
+    prop_oc_docr = 0.762, #0.8 inflow, 0.747, 0.573, 0.4
+    prop_oc_docl = 0.058, #0.05 inflow,  0.058, 0.245, 
+    prop_oc_pocr = 0.06, #0.05 inflow, .075, 0.081, 0.167
+    prop_oc_pocl = 0.12, #0.1 inflow, .12
     mean_depth = sum(volume)/max(area),
     W_str = None,
    # training_data_path = 'Peter Parameterization/outputs', #'../output' for putting into a ML model
@@ -196,10 +202,10 @@ plt.xlabel("Time", fontsize=15)
 plt.show()
  """
 
-df_obs = pd.read_csv('Peter Inputs/observed_data.csv',  parse_dates=True)
-df_obs_surf = df_obs[(df_obs['variable'] == 'wtemp') & (df_obs['depth'] == 0.5)]
+df_obs = pd.read_csv('Peter Inputs/Obs4check/observed_data3.csv',  parse_dates=True)
+df_obs_surf = df_obs[(df_obs['variable'] == 'wtemp') & (df_obs['depth'] == 1)]
 df_obs_surf = df_obs_surf.drop(columns=['depth_id'])
-df_obs_surf = df_obs_surf.dropna()
+df_obs_surf = df_obs_surf.dropna(subset=['observation'])
 print(df_obs_surf.head())
 print(df_obs_surf.shape)
 print(df_obs_surf.columns)
@@ -207,31 +213,77 @@ print(df_obs_surf["datetime"])
 print( df_obs_surf["observation"])
 df_obs_surf['datetime'] = pd.to_datetime(df_obs_surf['datetime'], format = 'mixed')
 
-df_obs_bot= df_obs[(df_obs['variable'] == 'wtemp') & (df_obs['depth'] == 6)]
+df_obs_bot= df_obs[(df_obs['variable'] == 'wtemp') & (df_obs['depth'] == 8)]
 df_obs_bot = df_obs_bot.drop(columns=['depth_id'])
-df_obs_bot = df_obs_bot.dropna()
+#df_obs_bot = df_obs_bot.dropna()
 df_obs_bot['datetime'] = pd.to_datetime(df_obs_bot['datetime'], format = 'mixed')
 
 print(u_ini)
 print(depth)
 plt.figure(figsize=(10, 5))
-plt.plot(times, temp[1,:], color= 'blue', label='0.5m Modeled Temp', linestyle= 'solid')
-plt.plot(times, temp[12,:], color= 'blue', label='6m Modeled Temp', linestyle= 'dashed')
-plt.plot(df_obs_surf["datetime"], df_obs_surf["observation"], color= 'red', label='0.5m Observed Temp', linestyle= 'solid')
-plt.plot(df_obs_bot["datetime"], df_obs_bot["observation"], color= 'red', label='6m Observed Temp', linestyle= 'dashed')
+plt.plot(times, temp[2,:], color= 'blue', label='1m Modeled Temp', linestyle= 'solid')
+plt.plot(times, temp[16,:], color= 'blue', label='8m Modeled Temp', linestyle= 'dashed')
+plt.plot(df_obs_surf["datetime"], df_obs_surf["observation"], color= 'red', label='1m Observed Temp', linestyle= 'solid')
+plt.plot(df_obs_bot["datetime"], df_obs_bot["observation"], color= 'red', label='8m Observed Temp', linestyle= 'dashed')
 plt.ylabel("Temp.", fontsize=15)
 plt.xlabel("Time", fontsize=15) 
 plt.legend(loc='best')
 plt.show()
 
+df_obs_surf_do = df_obs[(df_obs['variable'] == 'do_mgl') & (df_obs['depth'] == 1)]
+df_obs_surf_do = df_obs_surf_do.drop(columns=['depth_id'])
+#df_obs_surf_do = df_obs_surf.dropna()
+print(df_obs_surf_do.head())
+print(df_obs_surf_do.shape)
+print(df_obs_surf_do.columns)
+print(df_obs_surf_do["datetime"])
+print( df_obs_surf_do["observation"])
+df_obs_surf_do['datetime'] = pd.to_datetime(df_obs_surf_do['datetime'], format = 'mixed')
 
+df_obs_bot_do= df_obs[(df_obs['variable'] == 'do_mgl') & (df_obs['depth'] == 8)]
+df_obs_bot_do = df_obs_bot_do.drop(columns=['depth_id'])
+df_obs_bot_do = df_obs_bot_do.dropna(subset=['observation'])
+df_obs_bot_do['datetime'] = pd.to_datetime(df_obs_bot_do['datetime'], format = 'mixed')
+
+print(u_ini)
+print(depth)
+plt.figure(figsize=(10, 5))
+plt.plot(times, o2[2,:]/volume[2], color= 'blue', label='1m Modeled DO', linestyle= 'solid')
+plt.plot(times, o2[16,:]/volume[16], color= 'blue', label='8m Modeled DO', linestyle= 'dashed')
+plt.plot(df_obs_surf_do["datetime"], df_obs_surf_do["observation"], color= 'red', label='1m Observed DO', linestyle= 'solid')
+plt.plot(df_obs_bot_do["datetime"], df_obs_bot_do["observation"], color= 'red', label='8m Observed DO', linestyle= 'dashed')
+plt.ylabel("DO.", fontsize=15)
+plt.xlabel("Time", fontsize=15) 
+plt.legend(loc='best')
+plt.show()
+
+df_obs_surf_doc = df_obs[(df_obs['variable'] == 'doc') & (df_obs['depth'] == 1)]
+df_obs_surf_doc = df_obs_surf_doc.drop(columns=['depth_id'])
+df_obs_surf_doc['datetime'] = pd.to_datetime(df_obs_surf_doc['datetime'], format = 'mixed')
+
+df_obs_bot_doc= df_obs[(df_obs['variable'] == 'doc') & (df_obs['depth'] == 12)]
+df_obs_bot_doc = df_obs_bot_doc.drop(columns=['depth_id'])
+df_obs_bot_doc = df_obs_bot_doc.dropna(subset=['observation'])
+df_obs_bot_doc['datetime'] = pd.to_datetime(df_obs_bot_doc['datetime'], format = 'mixed')
+
+plt.figure(figsize=(10, 5))
+plt.plot(times, doc_all[2,:]/volume[2], color='blue', label='1m Modeled DOC', linestyle='solid')
+plt.plot(times, doc_all[16,:]/volume[16], color='blue', label='12m Modeled DOC', linestyle='dashed')
+plt.scatter(df_obs_surf_doc["datetime"], df_obs_surf_doc["observation"], 
+            color='red', label='1m Observed DOC', marker='o', zorder=5)
+plt.scatter(df_obs_bot_doc["datetime"], df_obs_bot_doc["observation"], 
+            color='red', label='12m Observed DOC', marker='x', zorder=5)
+plt.ylabel("DOC (mg/L)", fontsize=15)
+plt.xlabel("Time", fontsize=15)
+plt.legend(loc='best')
+plt.show()
 
 # heatmap of temps  
 N_pts = 30 #how many points on x axis
 
 #quit() # was cut out before
 fig, ax = plt.subplots(figsize=(15,5))
-sns.heatmap(temp, cmap=plt.cm.get_cmap('Spectral_r'),  xticklabels=1000, yticklabels=2, vmin = 0, vmax = 30)
+sns.heatmap(temp, cmap=plt.cm.get_cmap('Spectral_r'),yticklabels=2, vmin = 0, vmax = 30), #xticklabels=1000,
 ax.contour(np.arange(.5, temp.shape[1]), np.arange(.5, temp.shape[0]), calc_dens(temp), levels=[999],
            colors=['black', 'gray'],
            linestyles = 'dotted')
@@ -253,7 +305,7 @@ plt.show()
 
 
 fig, ax = plt.subplots(figsize=(15,5))
-sns.heatmap(np.transpose(np.transpose(o2)/volume), cmap=plt.cm.get_cmap('Spectral_r'),  xticklabels=1000, yticklabels=2, vmin = 0, vmax = 20)
+sns.heatmap(np.transpose(np.transpose(o2)/volume), cmap=plt.cm.get_cmap('Spectral_r'),  yticklabels=2, vmin = 0, vmax = 20)
 ax.contour(np.arange(.5, temp.shape[1]), np.arange(.5, temp.shape[0]), calc_dens(temp), levels=[999],
            colors=['black', 'gray'],
            linestyles = 'dotted')
@@ -272,7 +324,7 @@ ax.set_yticklabels(depth_label, rotation=0)
 plt.show()
 
 fig, ax = plt.subplots(figsize=(15,5))
-sns.heatmap(np.transpose(np.transpose(docl)/volume), cmap=plt.cm.get_cmap('Spectral_r'),  xticklabels=1000, yticklabels=2, vmin = 0, vmax = 7)
+sns.heatmap(np.transpose(np.transpose(docl)/volume), cmap=plt.cm.get_cmap('Spectral_r'),   yticklabels=2, vmin = 0, vmax = 7)
 ax.contour(np.arange(.5, temp.shape[1]), np.arange(.5, temp.shape[0]), calc_dens(temp), levels=[999],
            colors=['black', 'gray'],
            linestyles = 'dotted')
@@ -292,7 +344,7 @@ plt.show()
 
 
 fig, ax = plt.subplots(figsize=(15,5))
-sns.heatmap(np.transpose(np.transpose(docr)/volume), cmap=plt.cm.get_cmap('Spectral_r'),  xticklabels=1000, yticklabels=2, vmin = 0, vmax = 7)
+sns.heatmap(np.transpose(np.transpose(docr)/volume), cmap=plt.cm.get_cmap('Spectral_r'),   yticklabels=2, vmin = 0, vmax = 7)
 ax.contour(np.arange(.5, temp.shape[1]), np.arange(.5, temp.shape[0]), calc_dens(temp), levels=[999],
            colors=['black', 'gray'],
            linestyles = 'dotted')
@@ -312,7 +364,7 @@ plt.show()
 
 
 fig, ax = plt.subplots(figsize=(15,5))
-sns.heatmap(np.transpose(np.transpose(pocr)/volume), cmap=plt.cm.get_cmap('Spectral_r'),  xticklabels=1000, yticklabels=2, vmin = 0, vmax = 15)
+sns.heatmap(np.transpose(np.transpose(pocr)/volume), cmap=plt.cm.get_cmap('Spectral_r'),   yticklabels=2, vmin = 0, vmax = 15)
 ax.contour(np.arange(.5, temp.shape[1]), np.arange(.5, temp.shape[0]), calc_dens(temp), levels=[999],
            colors=['black', 'gray'],
            linestyles = 'dotted')
@@ -331,7 +383,7 @@ ax.set_yticklabels(depth_label, rotation=0)
 plt.show()
 
 fig, ax = plt.subplots(figsize=(15,5))
-sns.heatmap(np.transpose(np.transpose(pocl)/volume), cmap=plt.cm.get_cmap('Spectral_r'),  xticklabels=1000, yticklabels=2, vmin = 0, vmax = 15)
+sns.heatmap(np.transpose(np.transpose(pocl)/volume), cmap=plt.cm.get_cmap('Spectral_r'),   yticklabels=2, vmin = 0, vmax = 15)
 ax.contour(np.arange(.5, temp.shape[1]), np.arange(.5, temp.shape[0]), calc_dens(temp), levels=[999],
            colors=['black', 'gray'],
            linestyles = 'dotted')
@@ -351,7 +403,7 @@ plt.show()
 
 
 fig, ax = plt.subplots(figsize=(15,5))
-sns.heatmap(np.transpose(np.transpose(npp)/volume) * 86400, cmap=plt.cm.get_cmap('Spectral_r'),  xticklabels=1000, yticklabels=2, vmin = 0, vmax = .3)
+sns.heatmap(np.transpose(np.transpose(npp)/volume) * 86400, cmap=plt.cm.get_cmap('Spectral_r'), yticklabels=2, vmin = 0, vmax = .3)
 ax.contour(np.arange(.5, temp.shape[1]), np.arange(.5, temp.shape[0]), calc_dens(temp), levels=[999],
            colors=['black', 'gray'],
            linestyles = 'dotted')
@@ -371,7 +423,7 @@ plt.show()
 
 
 fig, ax = plt.subplots(figsize=(15,5))
-sns.heatmap(docr_respiration , cmap=plt.cm.get_cmap('Spectral_r'),  xticklabels=1000, yticklabels=2, vmin = 0, vmax = 2e-3)
+sns.heatmap(docr_respiration , cmap=plt.cm.get_cmap('Spectral_r'),   yticklabels=2, vmin = 0, vmax = 2e-3)
 ax.contour(np.arange(.5, temp.shape[1]), np.arange(.5, temp.shape[0]), calc_dens(temp), levels=[999],
            colors=['black', 'gray'],
            linestyles = 'dotted')
@@ -390,7 +442,7 @@ ax.set_yticklabels(depth_label, rotation=0)
 plt.show()
 
 fig, ax = plt.subplots(figsize=(15,5))
-sns.heatmap(docl_respiration , cmap=plt.cm.get_cmap('Spectral_r'),  xticklabels=1000, yticklabels=2, vmin = 0, vmax = 8e-2)
+sns.heatmap(docl_respiration , cmap=plt.cm.get_cmap('Spectral_r'),  yticklabels=2, vmin = 0, vmax = 8e-2)
 ax.contour(np.arange(.5, temp.shape[1]), np.arange(.5, temp.shape[0]), calc_dens(temp), levels=[999],
            colors=['black', 'gray'],
            linestyles = 'dotted')
@@ -410,7 +462,7 @@ plt.show()
 
 
 fig, ax = plt.subplots(figsize=(15,5))
-sns.heatmap(poc_respiration , cmap=plt.cm.get_cmap('Spectral_r'),  xticklabels=1000, yticklabels=2, vmin = 0, vmax = 3e-1)
+sns.heatmap(poc_respiration , cmap=plt.cm.get_cmap('Spectral_r'),   yticklabels=2, vmin = 0, vmax = 3e-1)
 ax.contour(np.arange(.5, temp.shape[1]), np.arange(.5, temp.shape[0]), calc_dens(temp), levels=[999],
            colors=['black', 'gray'],
            linestyles = 'dotted')
@@ -463,13 +515,16 @@ for r in range(0, len(temp[0,:])):
 
 plt.plot(times, o2[0,:]/volume[0], color = 'blue')
 plt.plot(times, do_sat, color = 'red')
+plt.ylabel("DO (mg/L)")
+plt.xlabel("Time")
+plt.legend()
 plt.show()
 
 plt.plot(times, thermo_dep[0,:]*dx,color= 'blue')
 plt.plot(times, temp[0,:] - temp[(nx-1),:], color = 'red')
 plt.show()
 
-depths = [1,30]   # Python indices for depth=1 and depth=12
+depths = [1,34]   # Python indices for depth=1 and depth=12
 labels = ['Depth 1', 'Depth 17']
 
 # Plot DO

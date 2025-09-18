@@ -312,7 +312,7 @@ def provide_meteorology(meteofile, secchifile, windfactor):
     print(daily_meteo['datetime'])
 
     #daily_meteo['date'] = pd.to_datetime(daily_meteo['datetime'])
-    daily_meteo['date'] = pd.to_datetime(daily_meteo['datetime'],  format = '%Y-%m-%d %H:%M:%S')
+    daily_meteo['date'] = pd.to_datetime(daily_meteo['datetime'])#,format = '%Y-%m-%d %H:%M:%S'
     daily_meteo['Cloud_Cover'] = calc_cc(date = daily_meteo['date'],
                                                 airt = daily_meteo['Air_Temperature_celsius'],
                                                 relh = daily_meteo['Relative_Humidity_percent'],
@@ -408,8 +408,9 @@ def wq_initial_profile(initfile, nx, dx, depth, volume, startDate):
   #startDate = meteo['date'].min()
   obs = pd.read_csv(initfile)
   obs['datetime'] = pd.to_datetime(obs['datetime'])
-  
-  do_obs = obs.loc[obs['variable'] == 'dissolvedOxygen']
+  print(obs.dtypes)
+  print(obs['datetime'].head())
+  do_obs = obs.loc[obs['variable'] == 'do_mgl']
   do_obs['ditt'] = abs(do_obs['datetime'] - startDate)
   init_df = do_obs.loc[do_obs['ditt'] == do_obs['ditt'].min()]
   if max(depth) > init_df.depth.max():
@@ -422,6 +423,7 @@ def wq_initial_profile(initfile, nx, dx, depth, volume, startDate):
   do = profile_fun(out_depths)
   
   doc_obs = obs.loc[obs['variable'] == 'doc']
+  #print(doc_obs)
   doc_obs['ditt'] = abs(doc_obs['datetime'] - startDate)
   init_df = doc_obs.loc[doc_obs['ditt'] == doc_obs['ditt'].min()]
   if init_df.depth.min()>0: #assumed mixed epi, if no 0m available then it pulls from shallowest option
@@ -437,12 +439,17 @@ def wq_initial_profile(initfile, nx, dx, depth, volume, startDate):
   out_depths = depth# these aren't actually at the 0, 1, 2, ... values, actually increment by 1.0412; make sure okay
   doc = profile_fun(out_depths)
   
-  u = np.vstack((do * volume, doc * volume))
-  
-  # print(u)
+  u = np.vstack((do * volume, doc* volume)) # * volume
+  print("DOC obs (mg/L):", doc[:10])
+  print("Layer volumes (m³):", volume[:10])
+  print("DOC * volume (raw, mg* m³):", (doc * volume)[:10])
+  print("DOC * volume * mgL_to_g (g):", (doc * volume * 1e-3)[:10])
+
+  print(u)
   # TODO implement warning about profile vs. met start date
-  
+
   return(u)
+  
 
 def get_hypsography(hypsofile, dx, nx):
   hyps = pd.read_csv(hypsofile)
@@ -2266,7 +2273,7 @@ def run_wq_model(
   light_poc = 0.7,
   oc_load_input = .0129  * 26700, # g C per m3 per hour sub in number for area
   hydro_res_time_hr = 1285*24,
- # outflow_depth = 0.1,
+  outflow_depth = 0.1,
   prop_oc_docr = 0.762, #0.8 inflow
   prop_oc_docl = 0.058, #0.05 inflow
   prop_oc_pocr = 0.06, #0.05 inflow
@@ -2366,12 +2373,12 @@ def run_wq_model(
   
     
    #Calculating per-depth OC load #### i took this out 4/29, put back in 5/13
-  #perdepth_oc = oc_load_input / int(outflow_depth * 2)
+  perdepth_oc = oc_load_input / (5*2)# int(outflow_depth * 2)
   #perdepth_oc = oc_load_input
-  #perdepth_docr = perdepth_oc * prop_oc_docr
-  #perdepth_docl = perdepth_oc * prop_oc_docl
-  #perdepth_pocr = perdepth_oc * prop_oc_pocl
-  #perdepth_pocl = perdepth_oc * prop_oc_pocl
+  perdepth_docr = perdepth_oc * prop_oc_docr
+  perdepth_docl = perdepth_oc * prop_oc_docl
+  perdepth_pocr = perdepth_oc * prop_oc_pocl
+  perdepth_pocl = perdepth_oc * prop_oc_pocl
   
   #breakpoint()
   #times = np.arange(startTime, endTime, dt)
@@ -2389,7 +2396,8 @@ def run_wq_model(
     depth_limit = mean_depth
     # depth_limit = 1
     
-    sum_doc = (docr[depth < depth_limit] + docl[depth < depth_limit] )/volume[depth < depth_limit] 
+    sum_doc = (docr[depth < depth_limit] + docl[depth < depth_limit] )/volume[depth < depth_limit]
+    #print(sum_doc)
     sum_poc = (pocr[depth < depth_limit]  + pocl[depth < depth_limit] )/volume[depth < depth_limit] 
     kd_light = light_water +  light_doc * np.mean(sum_doc) + light_poc * np.mean(sum_poc)
     
@@ -2405,11 +2413,11 @@ def run_wq_model(
     
     # OC loading
     
-    #for i in range(0, int(outflow_depth * 2)): ####i took this out 4/29, put back in 5/13
-       # docr[i] += perdepth_docr
-        #docl[i] += perdepth_docl
-        #pocr[i] += perdepth_pocr
-        #pocl[i] += perdepth_pocl
+    for i in range(0, int(outflow_depth * 2)): ####i took this out 4/29, put back in 5/13
+        docr[i] += perdepth_docr
+        docl[i] += perdepth_docl
+        pocr[i] += perdepth_pocr
+        pocl[i] += perdepth_pocl
     #docr = [x+perdepth_docr for x in docr]
     #docl = [x+perdepth_docl for x in docl]
     #pocr = [x+perdepth_pocr for x in pocr]
@@ -2754,14 +2762,14 @@ def run_wq_model(
     
     ## OC Outflow
     # Calculating per-depth OC load
-    #outflow_layers = outflow_depth * 2
-    #volume_out = ((1 / hydro_res_time_hr) * sum(volume)) / outflow_layers
+    outflow_layers = outflow_depth * 2
+    volume_out = ((1 / hydro_res_time_hr) * sum(volume)) / outflow_layers
     
-    #for i in range(0,int(outflow_layers)):
-        #docr[i] -= docr[i] / volume[i] * volume_out
-       # docl[i] -= docl[i] / volume[i] * volume_out
-        #pocr[i] -= pocr[i] / volume[i] * volume_out
-        #pocl[i] -= pocl[i] / volume[i] * volume_out
+    for i in range(0,int(outflow_layers)):
+        docr[i] -= docr[i] / volume[i] * volume_out
+        docl[i] -= docl[i] / volume[i] * volume_out
+        pocr[i] -= pocr[i] / volume[i] * volume_out
+        pocl[i] -= pocl[i] / volume[i] * volume_out
     #
     #print(type(pocl))
     
