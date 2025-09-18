@@ -13,7 +13,7 @@ from numba import jit
 #os.chdir("/home/robert/Projects/1D-AEMpy/src")
 #os.chdir("C:/Users/ladwi/Documents/Projects/R/1D-AEMpy/src")
 #os.chdir("D:/bensd/Documents/Python_Workspace/1D-AEMpy/src")
-os.chdir("/Users/emmamarchisin/Desktop/Research/Code/Cascade Lakes/Peter Lake/PeterCode2-RL")
+os.chdir("/Users/emmamarchisin/Desktop/Research/Code/Cascade Lakes/Peter Lake/PeterCode2")
 from Peter24_processBased_lakeModel_functions import get_hypsography, provide_meteorology, initial_profile, run_wq_model, wq_initial_profile, provide_phosphorus, do_sat_calc, calc_dens #, heating_module, diffusion_module, mixing_module, convection_module, ice_module
 
 
@@ -30,11 +30,7 @@ area, depth, volume = get_hypsography(hypsofile = 'Peter Inputs/2022/peter_bath.
 ## atmospheric boundary conditions
 meteo_all = provide_meteorology(meteofile = 'Peter Inputs/2022/nldas_hourly_Cascade2224.csv',
                     secchifile = None, 
-<<<<<<< HEAD
                     windfactor = 0.5) #1.0
-=======
-                    windfactor = 0.5) #played with this
->>>>>>> f1edadcf665107e027adc4c465be56432db88a66
 
 pd.DataFrame(meteo_all[0]).to_csv("Peter Inputs/2022/meteorology_input2.csv", index = False)
                      
@@ -114,11 +110,7 @@ res = run_wq_model(
     emissivity = 0.97,
     sigma = 5.67e-8,
     sw_factor = 1.0,
-<<<<<<< HEAD
     wind_factor = 0.5, #1.2, #1.2
-=======
-    wind_factor = 0.5, #1.2
->>>>>>> f1edadcf665107e027adc4c465be56432db88a66
     at_factor = 1.0,
     turb_factor = 1.0,
     p2 = 1,
