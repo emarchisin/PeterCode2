@@ -137,7 +137,7 @@ res = run_wq_model(
     settling_rate = 0.1/86400, #0.3 (ms-1)
     sediment_rate = 0.7/86400, #(m s-1)
     piston_velocity = 1.0/86400,
-    light_water = 0.3, #(m-1)
+    light_water = 0.3, #(m-1) #0.3
     light_doc = 0.02, #(m-1)
     light_poc = 0.5,
     oc_load_input =(.456)  * max(area)/24, # 38.0 mmol C m-2d-1=.456gC m-2 d-1 (Cole et al,2006 DIF model) divided by 24 hr/d

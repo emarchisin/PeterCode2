@@ -440,10 +440,10 @@ def wq_initial_profile(initfile, nx, dx, depth, volume, startDate):
   doc = profile_fun(out_depths)
   
   u = np.vstack((do * volume, doc* volume)) # * volume
-  print("DOC obs (mg/L):", doc[:10])
-  print("Layer volumes (m³):", volume[:10])
-  print("DOC * volume (raw, mg* m³):", (doc * volume)[:10])
-  print("DOC * volume * mgL_to_g (g):", (doc * volume * 1e-3)[:10])
+  #print("DOC obs (mg/L):", doc[:10])
+ # print("Layer volumes (m³):", volume[:10])
+  #print("DOC * volume (raw, mg* m³):", (doc * volume)[:10])
+  #print("DOC * volume * mgL_to_g (g):", (doc * volume * 1e-3)[:10])
 
   print(u)
   # TODO implement warning about profile vs. met start date
@@ -2373,7 +2373,7 @@ def run_wq_model(
   
     
    #Calculating per-depth OC load #### i took this out 4/29, put back in 5/13
-  perdepth_oc = oc_load_input / (5*2)# int(outflow_depth * 2)
+  perdepth_oc = oc_load_input / (thermo_dep*2)# int(outflow_depth * 2)
   #perdepth_oc = oc_load_input
   perdepth_docr = perdepth_oc * prop_oc_docr
   perdepth_docl = perdepth_oc * prop_oc_docl
