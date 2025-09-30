@@ -625,6 +625,31 @@ plt.legend()
 plt.title("Particulate Organic Carbon (POC)")
 plt.show()
 
+docr_resp_day = np.transpose(np.transpose(docr_respiration) / volume * 86400)
+docl_resp_day = np.transpose(np.transpose(docl_respiration) / volume * 86400)
+poc_resp_day = np.transpose(np.transpose(poc_respiration) / volume * 86400)
+def plot_respiration_heatmap(data, title, vmin=0, vmax=None):
+    fig, ax = plt.subplots(figsize=(15,5))
+    sns.heatmap(data, cmap=plt.cm.get_cmap('Spectral_r'), yticklabels=2, vmin=vmin, vmax=vmax)
+    ax.contour(np.arange(.5, temp.shape[1]), np.arange(.5, temp.shape[0]), calc_dens(temp), levels=[999],
+               colors=['black', 'gray'], linestyles='dotted')
+    ax.set_ylabel("Depth (m)", fontsize=15)
+    ax.set_xlabel("Time", fontsize=15)
+    ax.collections[0].colorbar.set_label(f"{title} (g/m3/d)") 
+    N_pts = 15
+    xticks_ix = np.linspace(0, len(times)-1, N_pts, dtype=int)
+    time_label = times[xticks_ix]
+    ax.set_xticks(xticks_ix)
+    ax.set_xticklabels(time_label, rotation=45, ha='right')    
+    yticks_ix = np.array(ax.get_yticks()).astype(int)
+    depth_label = yticks_ix / 2
+    ax.set_yticklabels(depth_label, rotation=0)
+    plt.show()
+
+# Plot all respiration heatmaps
+plot_respiration_heatmap(docr_resp_day, "DOCr Respiration", vmin=0, vmax=0.06)
+plot_respiration_heatmap(docl_resp_day, "DOCl Respiration", vmin=0,vmax=0.25)
+plot_respiration_heatmap(poc_resp_day, "POC Respiration", vmin=0)
 # TODO
 # air water exchange
 # sediment loss POC
