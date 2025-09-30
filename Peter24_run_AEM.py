@@ -140,7 +140,7 @@ res = run_wq_model(
     settling_rate = 0.7/86400, #0.3 (ms-1)
     sediment_rate = 0.7/86400, #(m s-1)
     piston_velocity = 1.0/86400,
-    light_water =1.3, #(m-1) #0.125
+    light_water =.125, #1.3, #(m-1) #0.125
     light_doc = 0.025, #(m-1)
     light_poc = 1.1,
     oc_load_input = ((.456)  * max(area)/24)*.25, # 38.0 mmol C m-2d-1=.456gC m-2 d-1 (Cole et al,2006 DIF model) divided by 24 hr/d
@@ -557,6 +557,25 @@ plt.ylabel("DO (mg/L)")
 plt.xlabel("Time")
 plt.legend()
 plt.title("Dissolved Oxygen (DO)")
+plt.show()
+
+plt.figure(figsize=(10, 5))
+subset = 240  
+for i, d in enumerate(depths):
+    plt.plot(
+        times[:subset],                # first 240 time points
+        o2[d, :subset] / volume[d],    # corresponding oxygen values
+        label=f'DO at {labels[i]}',
+        linestyle='-',
+        color=('blue' if d == 1 else 'cyan'))
+plt.ylabel("DO (mg/L)")
+plt.xlabel("Time")
+plt.legend()
+plt.title("Dissolved Oxygen (DO)")
+n_ticks = 10
+tick_idx = np.linspace(0, subset - 1, n_ticks, dtype=int)
+plt.xticks(rotation=45)
+plt.xticks(times[tick_idx])
 plt.show()
 
 plt.figure(figsize=(10, 5))
