@@ -24,7 +24,7 @@ dt = 3600 # 24 hours times 60 min/hour times 60 seconds/min
 dx = zmax/nx # spatial step
 
 ## area and depth values of our lake 
-area, depth, volume = get_hypsography(hypsofile = 'Peter Inputs/2022/peter_bath.csv',
+area, depth, volume, hypso_weight = get_hypsography(hypsofile = 'Peter Inputs/2022/peter_bath.csv',
                             dx = dx, nx = nx)
                             
 ## atmospheric boundary conditions
@@ -35,17 +35,19 @@ meteo_all = provide_meteorology(meteofile = 'Peter Inputs/2022/nldas_hourly_Casc
 pd.DataFrame(meteo_all[0]).to_csv("Peter Inputs/2022/meteorology_input2.csv", index = False)
                      
 ## time step discretization 
-#n_years = 0.05#0.307
-#hydrodynamic_timestep = 24 * dt
-#total_runtime =  (365 * n_years) * hydrodynamic_timestep/dt  
-#startTime =  1695 # DOY in 2016 * 24 hours- adjust for PYthon starting on 0 index
-#endTime =  4381# * hydrodynamic_timestep/dt) - 1
-#burn in with 2022
-n_years = 2.32#0.307
+#for 2024 only
+n_years = 0.05#0.307
 hydrodynamic_timestep = 24 * dt
 total_runtime =  (365 * n_years) * hydrodynamic_timestep/dt  
-startTime =  3759 # DOY in 2016 * 24 hours- adjust for PYthon starting on 0 index, basically inced of start date
-endTime =  24104# * hydrodynamic_timestep/dt) - 1
+startTime =  21399 # DOY in 2016 * 24 hours- adjust for PYthon starting on 0 index 2024-06-10 07:00:00
+endTime =  26268#24103# * hydrodynamic_timestep/dt) - 1
+
+#burn in with 2022
+#n_years = 2.32#0.307
+#hydrodynamic_timestep = 24 * dt
+#total_runtime =  (365 * n_years) * hydrodynamic_timestep/dt  
+#startTime =  3759 # DOY in 2016 * 24 hours- adjust for PYthon starting on 0 index, basically inced of start date
+#endTime =  24104# * hydrodynamic_timestep/dt) - 1
 
 startingDate = meteo_all[0]['date'][startTime] #* hydrodynamic_timestep/dt]
 endingDate = meteo_all[0]['date'][(endTime-1)]#meteo_all[0]['date'][(startTime + total_runtime)]# * hydrodynamic_timestep/dt -1]
@@ -76,15 +78,16 @@ Start = datetime.datetime.now()
 res = run_wq_model(  
     u = deepcopy(u_ini),
     o2 = deepcopy(wq_ini[0]),
-    docr = deepcopy(wq_ini[1]) * 1.3,
-    docl = 1.0 * volume,
-    pocr = 0.5 * volume,
-    pocl = 0.5 * volume,
+    docr = deepcopy(wq_ini[1]), #* 1.3,
+    docl = 0.5 * volume, #1.0
+    pocr = 0.1 * volume,
+    pocl = 0.1 * volume,
     startTime = startTime, 
     endTime = endTime, 
     area = area,
     volume = volume,
     depth = depth,
+    hypso_weight=hypso_weight,
     zmax = zmax,
     nx = nx,
     dt = dt,
@@ -100,7 +103,7 @@ res = run_wq_model(
     supercooled = 0,
     diffusion_method = 'pacanowskiPhilander',#'pacanowskiPhilander',# 'hendersonSellers', 'munkAnderson' 'hondzoStefan'
     scheme ='implicit',
-    km = 1.4 * 10**(-7), # 4 * 10**(-6), 
+    km = 2 * 10**(-4),#1.4 * 10**(-6), # 4 * 10**(-6), 
     k0 = 1 * 10**(-2),
     weight_kz = 0.5,
     kd_light = 0.6, 
@@ -124,32 +127,32 @@ res = run_wq_model(
     Ice_min = 0.1,
     pgdl_mode = 'on',
     rho_snow = 250,
-    p_max = 3/86400,#1
-    IP = 3e-5/86400 ,#0.1, 3e-5
+    p_max = 2.03/86400,#1
+    IP = 2.2e-6/86400 ,#0.1, 3e-5
     theta_npp = 1.08, #1.08
-    theta_r = 1.08, #1.08 #1.5 for 104 #1.35 for 106
+    theta_r = 1.08, #1.08 #
     conversion_constant = 1e-4,#0.1
-    sed_sink = -10/ 86400, #0.01 #-.12 , 0.0626
+    sed_sink = -0.45/ 86400, #0.01 #-.12 , 0.0626, -.45
     k_half = 0.5,
-    resp_docr =  0.0001/86400, # 0.001 0.0001 (s-1) 0.007/86400
-    resp_docl =0.05/86400 , # 0.01 0.05 (s-1) 0.05/86400
-    resp_poc = 0.1/86400, # 0.1 0.001 0.0001 (s-1_)
-    settling_rate = 0.1/86400, #0.3 (ms-1)
+    resp_docr =0.0007/86400, # 0.001 0.0001 (s-1) 0.007/86400
+    resp_docl =0.01/86400 , # 0.01 0.05 (s-1) 0.05/86400
+    resp_poc = 0.12/86400, # 0.1 0.001 0.0001 (s-1_)
+    settling_rate = 0.7/86400, #0.3 (ms-1)
     sediment_rate = 0.7/86400, #(m s-1)
     piston_velocity = 1.0/86400,
-    light_water = 0.3, #(m-1) #0.3
-    light_doc = 0.02, #(m-1)
-    light_poc = 0.5,
-    oc_load_input =(.456)  * max(area)/24, # 38.0 mmol C m-2d-1=.456gC m-2 d-1 (Cole et al,2006 DIF model) divided by 24 hr/d
+    light_water =1.3, #(m-1) #0.125
+    light_doc = 0.025, #(m-1)
+    light_poc = 1.1,
+    oc_load_input = ((.456)  * max(area)/24)*.25, # 38.0 mmol C m-2d-1=.456gC m-2 d-1 (Cole et al,2006 DIF model) divided by 24 hr/d
     hydro_res_time_hr = 365*24,#1285?
-    outflow_depth = 0.5,
-    prop_oc_docr = 0.762, #0.8 inflow, 0.747, 0.573, 0.4
-    prop_oc_docl = 0.058, #0.05 inflow,  0.058, 0.245, 
-    prop_oc_pocr = 0.06, #0.05 inflow, .075, 0.081, 0.167
-    prop_oc_pocl = 0.12, #0.1 inflow, .12
+    outflow_depth = max(depth), #skipped with hypso_weight
+    prop_oc_docr = (0.573+0.205), #0.8 inflow, 0.747, 0.573, 0.4 #numbers from Cole et al 2006
+    prop_oc_docl = 0.04,#0.245, #0.05 inflow,  0.058, 0.245, 
+    prop_oc_pocr = 0.081, #0.05 inflow, .075, 0.081, 0.167
+    prop_oc_pocl = 0.101, #0.1 inflow, .12
     mean_depth = sum(volume)/max(area),
     W_str = None,
-   # training_data_path = 'Peter Parameterization/outputs', #'../output' for putting into a ML model
+    training_data_path = None, #'Peter Parameterization/outputs', #'../output' for putting into a ML model
     timelabels = times)
 
 temp=  res['temp']
@@ -201,8 +204,15 @@ plt.ylabel("Thermocline depth", fontsize=15)
 plt.xlabel("Time", fontsize=15) 
 plt.show()
  """
+plt.figure(figsize=(10, 5))
+plt.plot(times, thermo_dep[0,:]/2)
+plt.ylabel("Thermocline depth", fontsize=15)
+plt.xlabel("Time", fontsize=15) 
+plt.show()
 
-df_obs = pd.read_csv('Peter Inputs/Obs4check/observed_data3.csv',  parse_dates=True)
+df_obs = pd.read_csv('Peter Inputs/Obs4check/observed_data3.csv',  parse_dates=['datetime'])
+df_obs['datetime'] = pd.to_datetime(df_obs['datetime'], errors='coerce')
+df_obs = df_obs[(df_obs['datetime'] >= startingDate) & (df_obs['datetime'] <= endingDate)]
 df_obs_surf = df_obs[(df_obs['variable'] == 'wtemp') & (df_obs['depth'] == 1)]
 df_obs_surf = df_obs_surf.drop(columns=['depth_id'])
 df_obs_surf = df_obs_surf.dropna(subset=['observation'])
@@ -213,7 +223,7 @@ print(df_obs_surf["datetime"])
 print( df_obs_surf["observation"])
 df_obs_surf['datetime'] = pd.to_datetime(df_obs_surf['datetime'], format = 'mixed')
 
-df_obs_bot= df_obs[(df_obs['variable'] == 'wtemp') & (df_obs['depth'] == 8)]
+df_obs_bot= df_obs[(df_obs['variable'] == 'wtemp') & (df_obs['depth'] == 12)]
 df_obs_bot = df_obs_bot.drop(columns=['depth_id'])
 #df_obs_bot = df_obs_bot.dropna()
 df_obs_bot['datetime'] = pd.to_datetime(df_obs_bot['datetime'], format = 'mixed')
@@ -222,9 +232,9 @@ print(u_ini)
 print(depth)
 plt.figure(figsize=(10, 5))
 plt.plot(times, temp[2,:], color= 'blue', label='1m Modeled Temp', linestyle= 'solid')
-plt.plot(times, temp[16,:], color= 'blue', label='8m Modeled Temp', linestyle= 'dashed')
+plt.plot(times, temp[24,:], color= 'blue', label='12m Modeled Temp', linestyle= 'dashed')
 plt.plot(df_obs_surf["datetime"], df_obs_surf["observation"], color= 'red', label='1m Observed Temp', linestyle= 'solid')
-plt.plot(df_obs_bot["datetime"], df_obs_bot["observation"], color= 'red', label='8m Observed Temp', linestyle= 'dashed')
+plt.plot(df_obs_bot["datetime"], df_obs_bot["observation"], color= 'red', label='12m Observed Temp', linestyle= 'dashed')
 plt.ylabel("Temp.", fontsize=15)
 plt.xlabel("Time", fontsize=15) 
 plt.legend(loc='best')
@@ -240,7 +250,7 @@ print(df_obs_surf_do["datetime"])
 print( df_obs_surf_do["observation"])
 df_obs_surf_do['datetime'] = pd.to_datetime(df_obs_surf_do['datetime'], format = 'mixed')
 
-df_obs_bot_do= df_obs[(df_obs['variable'] == 'do_mgl') & (df_obs['depth'] == 8)]
+df_obs_bot_do= df_obs[(df_obs['variable'] == 'do_mgl') & (df_obs['depth'] == 12)]
 df_obs_bot_do = df_obs_bot_do.drop(columns=['depth_id'])
 df_obs_bot_do = df_obs_bot_do.dropna(subset=['observation'])
 df_obs_bot_do['datetime'] = pd.to_datetime(df_obs_bot_do['datetime'], format = 'mixed')
@@ -249,9 +259,9 @@ print(u_ini)
 print(depth)
 plt.figure(figsize=(10, 5))
 plt.plot(times, o2[2,:]/volume[2], color= 'blue', label='1m Modeled DO', linestyle= 'solid')
-plt.plot(times, o2[16,:]/volume[16], color= 'blue', label='8m Modeled DO', linestyle= 'dashed')
+plt.plot(times, o2[24,:]/volume[24], color= 'blue', label='12m Modeled DO', linestyle= 'dashed')
 plt.plot(df_obs_surf_do["datetime"], df_obs_surf_do["observation"], color= 'red', label='1m Observed DO', linestyle= 'solid')
-plt.plot(df_obs_bot_do["datetime"], df_obs_bot_do["observation"], color= 'red', label='8m Observed DO', linestyle= 'dashed')
+plt.plot(df_obs_bot_do["datetime"], df_obs_bot_do["observation"], color= 'red', label='12m Observed DO', linestyle= 'dashed')
 plt.ylabel("DO.", fontsize=15)
 plt.xlabel("Time", fontsize=15) 
 plt.legend(loc='best')
@@ -268,18 +278,19 @@ df_obs_bot_doc['datetime'] = pd.to_datetime(df_obs_bot_doc['datetime'], format =
 
 plt.figure(figsize=(10, 5))
 plt.plot(times, doc_all[2,:]/volume[2], color='blue', label='1m Modeled DOC', linestyle='solid')
-plt.plot(times, doc_all[16,:]/volume[16], color='blue', label='12m Modeled DOC', linestyle='dashed')
+plt.plot(times, doc_all[24,:]/volume[24], color='blue', label='12m Modeled DOC', linestyle='dashed')
 plt.scatter(df_obs_surf_doc["datetime"], df_obs_surf_doc["observation"], 
             color='red', label='1m Observed DOC', marker='o', zorder=5)
 plt.scatter(df_obs_bot_doc["datetime"], df_obs_bot_doc["observation"], 
             color='red', label='12m Observed DOC', marker='x', zorder=5)
 plt.ylabel("DOC (mg/L)", fontsize=15)
 plt.xlabel("Time", fontsize=15)
+plt.ylim(2, 8)
 plt.legend(loc='best')
 plt.show()
 
 # heatmap of temps  
-N_pts = 30 #how many points on x axis
+N_pts = 15 #how many points on x axis
 
 #quit() # was cut out before
 fig, ax = plt.subplots(figsize=(15,5))
@@ -290,12 +301,17 @@ ax.contour(np.arange(.5, temp.shape[1]), np.arange(.5, temp.shape[0]), calc_dens
 ax.set_ylabel("Depth (m)", fontsize=15)
 ax.set_xlabel("Time", fontsize=15)    
 ax.collections[0].colorbar.set_label("Water Temperature  (dC)")
-xticks_ix = np.array(ax.get_xticks()).astype(int)
+xticks_ix = np.linspace(0, len(times)-1, N_pts, dtype=int)
 time_label = times[xticks_ix]
-nelement = len(times)//N_pts
+
+ax.set_xticks(xticks_ix)
+ax.set_xticklabels(time_label, rotation=45, ha='right')
+#xticks_ix = np.array(ax.get_xticks()).astype(int)
+#time_label = times[xticks_ix]
+#nelement = len(times)//N_pts
 #time_label = time_label[::nelement]
-ax.xaxis.set_major_locator(plt.MaxNLocator(N_pts * n_years))
-ax.set_xticklabels(time_label, rotation=45, ha = 'right')
+#ax.xaxis.set_major_locator(plt.MaxNLocator(N_pts * n_years))
+#ax.set_xticklabels(time_label, rotation=45, ha = 'right')
 yticks_ix = np.array(ax.get_yticks()).astype(int)
 depth_label = yticks_ix / 2
 ax.set_yticklabels(depth_label, rotation=0)
@@ -312,90 +328,100 @@ ax.contour(np.arange(.5, temp.shape[1]), np.arange(.5, temp.shape[0]), calc_dens
 ax.set_ylabel("Depth (m)", fontsize=15)
 ax.set_xlabel("Time", fontsize=15)    
 ax.collections[0].colorbar.set_label("Dissolved Oxygen  (g/m3)")
-xticks_ix = np.array(ax.get_xticks()).astype(int)
+xticks_ix = np.linspace(0, len(times)-1, N_pts, dtype=int)
 time_label = times[xticks_ix]
-nelement = len(times)//N_pts
-#time_label = time_label[::nelement]
-ax.xaxis.set_major_locator(plt.MaxNLocator(N_pts * n_years))
-ax.set_xticklabels(time_label, rotation=45, ha = 'right')
-yticks_ix = np.array(ax.get_yticks()).astype(int)
+ax.set_xticks(xticks_ix)
+ax.set_xticklabels(time_label, rotation=45, ha='right')
+ticks_ix = np.array(ax.get_yticks()).astype(int)
 depth_label = yticks_ix / 2
 ax.set_yticklabels(depth_label, rotation=0)
 plt.show()
 
 fig, ax = plt.subplots(figsize=(15,5))
-sns.heatmap(np.transpose(np.transpose(docl)/volume), cmap=plt.cm.get_cmap('Spectral_r'),   yticklabels=2, vmin = 0, vmax = 7)
+sns.heatmap(np.transpose(np.transpose(docl)/volume), cmap=plt.cm.get_cmap('Spectral_r'),   yticklabels=2, vmin = 0,vmax=8)
 ax.contour(np.arange(.5, temp.shape[1]), np.arange(.5, temp.shape[0]), calc_dens(temp), levels=[999],
            colors=['black', 'gray'],
            linestyles = 'dotted')
 ax.set_ylabel("Depth (m)", fontsize=15)
 ax.set_xlabel("Time", fontsize=15)    
 ax.collections[0].colorbar.set_label("DOC-labile  (g/m3)")
-xticks_ix = np.array(ax.get_xticks()).astype(int)
+xticks_ix = np.linspace(0, len(times)-1, N_pts, dtype=int)
 time_label = times[xticks_ix]
-nelement = len(times)//N_pts
-#time_label = time_label[::nelement]
-ax.xaxis.set_major_locator(plt.MaxNLocator(N_pts* n_years))
-ax.set_xticklabels(time_label, rotation=45, ha = 'right')
-yticks_ix = np.array(ax.get_yticks()).astype(int)
+ax.set_xticks(xticks_ix)
+ax.set_xticklabels(time_label, rotation=45, ha='right')
+ticks_ix = np.array(ax.get_yticks()).astype(int)
 depth_label = yticks_ix / 2
 ax.set_yticklabels(depth_label, rotation=0)
 plt.show()
 
 
 fig, ax = plt.subplots(figsize=(15,5))
-sns.heatmap(np.transpose(np.transpose(docr)/volume), cmap=plt.cm.get_cmap('Spectral_r'),   yticklabels=2, vmin = 0, vmax = 7)
+sns.heatmap(np.transpose(np.transpose(docr)/volume), cmap=plt.cm.get_cmap('Spectral_r'),   yticklabels=2, vmin = 0, vmax = 8)
 ax.contour(np.arange(.5, temp.shape[1]), np.arange(.5, temp.shape[0]), calc_dens(temp), levels=[999],
            colors=['black', 'gray'],
            linestyles = 'dotted')
 ax.set_ylabel("Depth (m)", fontsize=15)
 ax.set_xlabel("Time", fontsize=15)    
 ax.collections[0].colorbar.set_label("DOC-refractory  (g/m3)")
-xticks_ix = np.array(ax.get_xticks()).astype(int)
+xticks_ix = np.linspace(0, len(times)-1, N_pts, dtype=int)
 time_label = times[xticks_ix]
-nelement = len(times)//N_pts
-#time_label = time_label[::nelement]
-ax.xaxis.set_major_locator(plt.MaxNLocator(N_pts * n_years))
-ax.set_xticklabels(time_label, rotation=45, ha = 'right')
+ax.set_xticks(xticks_ix)
+ax.set_xticklabels(time_label, rotation=45, ha='right')
+ticks_ix = np.array(ax.get_yticks()).astype(int)
 yticks_ix = np.array(ax.get_yticks()).astype(int)
 depth_label = yticks_ix / 2
 ax.set_yticklabels(depth_label, rotation=0)
 plt.show()
 
+fig, ax = plt.subplots(figsize=(15,5))
+sns.heatmap(np.transpose(np.transpose(doc_all)/volume), cmap=plt.cm.get_cmap('Spectral_r'),   yticklabels=2, vmin = 0,vmax=8) #, vmax = 7
+ax.contour(np.arange(.5, temp.shape[1]), np.arange(.5, temp.shape[0]), calc_dens(temp), levels=[999],
+           colors=['black', 'gray'],
+           linestyles = 'dotted')
+ax.set_ylabel("Depth (m)", fontsize=15)
+ax.set_xlabel("Time", fontsize=15)    
+ax.collections[0].colorbar.set_label("DOC_all (g/m3)")
+xticks_ix = np.linspace(0, len(times)-1, N_pts, dtype=int)
+time_label = times[xticks_ix]
+ax.set_xticks(xticks_ix)
+ax.set_xticklabels(time_label, rotation=45, ha='right')
+ticks_ix = np.array(ax.get_yticks()).astype(int)
+yticks_ix = np.array(ax.get_yticks()).astype(int)
+depth_label = yticks_ix / 2
+ax.set_yticklabels(depth_label, rotation=0)
+plt.show()
 
 fig, ax = plt.subplots(figsize=(15,5))
-sns.heatmap(np.transpose(np.transpose(pocr)/volume), cmap=plt.cm.get_cmap('Spectral_r'),   yticklabels=2, vmin = 0, vmax = 15)
+sns.heatmap(np.transpose(np.transpose(pocr)/volume), cmap=plt.cm.get_cmap('Spectral_r'),   yticklabels=2, vmin = 0, vmax = 8)
 ax.contour(np.arange(.5, temp.shape[1]), np.arange(.5, temp.shape[0]), calc_dens(temp), levels=[999],
            colors=['black', 'gray'],
            linestyles = 'dotted')
 ax.set_ylabel("Depth (m)", fontsize=15)
 ax.set_xlabel("Time", fontsize=15)    
 ax.collections[0].colorbar.set_label("POC-refractory  (g/m3)")
-xticks_ix = np.array(ax.get_xticks()).astype(int)
+xticks_ix = np.linspace(0, len(times)-1, N_pts, dtype=int)
 time_label = times[xticks_ix]
-nelement = len(times)//N_pts
-#time_label = time_label[::nelement]
-ax.xaxis.set_major_locator(plt.MaxNLocator(N_pts * n_years))
-ax.set_xticklabels(time_label, rotation=45, ha = 'right')
+ax.set_xticks(xticks_ix)
+ax.set_xticklabels(time_label, rotation=45, ha='right')
+ticks_ix = np.array(ax.get_yticks()).astype(int)
 yticks_ix = np.array(ax.get_yticks()).astype(int)
 depth_label = yticks_ix / 2
 ax.set_yticklabels(depth_label, rotation=0)
 plt.show()
 
 fig, ax = plt.subplots(figsize=(15,5))
-sns.heatmap(np.transpose(np.transpose(pocl)/volume), cmap=plt.cm.get_cmap('Spectral_r'),   yticklabels=2, vmin = 0, vmax = 15)
+sns.heatmap(np.transpose(np.transpose(pocl)/volume), cmap=plt.cm.get_cmap('Spectral_r'),   yticklabels=2, vmin = 0, vmax = 8)
 ax.contour(np.arange(.5, temp.shape[1]), np.arange(.5, temp.shape[0]), calc_dens(temp), levels=[999],
            colors=['black', 'gray'],
            linestyles = 'dotted')
 ax.set_ylabel("Depth (m)", fontsize=15)
 ax.set_xlabel("Time", fontsize=15)    
 ax.collections[0].colorbar.set_label("POC-labile  (g/m3)")
-xticks_ix = np.array(ax.get_xticks()).astype(int)
+xticks_ix = np.linspace(0, len(times)-1, N_pts, dtype=int)
 time_label = times[xticks_ix]
-nelement = len(times)//N_pts
-#time_label = time_label[::nelement]
-ax.xaxis.set_major_locator(plt.MaxNLocator(N_pts * n_years))
-ax.set_xticklabels(time_label, rotation=45, ha = 'right')
+ax.set_xticks(xticks_ix)
+ax.set_xticklabels(time_label, rotation=45, ha='right')
+ticks_ix = np.array(ax.get_yticks()).astype(int)
 yticks_ix = np.array(ax.get_yticks()).astype(int)
 depth_label = yticks_ix / 2
 ax.set_yticklabels(depth_label, rotation=0)
@@ -410,12 +436,11 @@ ax.contour(np.arange(.5, temp.shape[1]), np.arange(.5, temp.shape[0]), calc_dens
 ax.set_ylabel("Depth (m)", fontsize=15)
 ax.set_xlabel("Time", fontsize=15)    
 ax.collections[0].colorbar.set_label("NPP  (g/m3/d)")
-xticks_ix = np.array(ax.get_xticks()).astype(int)
+xticks_ix = np.linspace(0, len(times)-1, N_pts, dtype=int)
 time_label = times[xticks_ix]
-nelement = len(times)//N_pts
-#time_label = time_label[::nelement]
-ax.xaxis.set_major_locator(plt.MaxNLocator(N_pts * n_years))
-ax.set_xticklabels(time_label, rotation=45, ha = 'right')
+ax.set_xticks(xticks_ix)
+ax.set_xticklabels(time_label, rotation=45, ha='right')
+ticks_ix = np.array(ax.get_yticks()).astype(int)
 yticks_ix = np.array(ax.get_yticks()).astype(int)
 depth_label = yticks_ix / 2
 ax.set_yticklabels(depth_label, rotation=0)
@@ -430,12 +455,11 @@ ax.contour(np.arange(.5, temp.shape[1]), np.arange(.5, temp.shape[0]), calc_dens
 ax.set_ylabel("Depth (m)", fontsize=15)
 ax.set_xlabel("Time", fontsize=15)    
 ax.collections[0].colorbar.set_label("DOCr respiration  (/d)")
-xticks_ix = np.array(ax.get_xticks()).astype(int)
+xticks_ix = np.linspace(0, len(times)-1, N_pts, dtype=int)
 time_label = times[xticks_ix]
-nelement = len(times)//N_pts
-#time_label = time_label[::nelement]
-ax.xaxis.set_major_locator(plt.MaxNLocator(N_pts * n_years))
-ax.set_xticklabels(time_label, rotation=45, ha = 'right')
+ax.set_xticks(xticks_ix)
+ax.set_xticklabels(time_label, rotation=45, ha='right')
+ticks_ix = np.array(ax.get_yticks()).astype(int)
 yticks_ix = np.array(ax.get_yticks()).astype(int)
 depth_label = yticks_ix / 2
 ax.set_yticklabels(depth_label, rotation=0)
@@ -449,12 +473,11 @@ ax.contour(np.arange(.5, temp.shape[1]), np.arange(.5, temp.shape[0]), calc_dens
 ax.set_ylabel("Depth (m)", fontsize=15)
 ax.set_xlabel("Time", fontsize=15)    
 ax.collections[0].colorbar.set_label("DOCl respiration  (/d)")
-xticks_ix = np.array(ax.get_xticks()).astype(int)
+xticks_ix = np.linspace(0, len(times)-1, N_pts, dtype=int)
 time_label = times[xticks_ix]
-nelement = len(times)//N_pts
-time_label = time_label[::nelement]
-ax.xaxis.set_major_locator(plt.MaxNLocator(N_pts * n_years)) #
-ax.set_xticklabels(time_label, rotation=45, ha = 'right')
+ax.set_xticks(xticks_ix)
+ax.set_xticklabels(time_label, rotation=45, ha='right')
+ticks_ix = np.array(ax.get_yticks()).astype(int)
 yticks_ix = np.array(ax.get_yticks()).astype(int)
 depth_label = yticks_ix / 2
 ax.set_yticklabels(depth_label, rotation=0)
@@ -469,12 +492,11 @@ ax.contour(np.arange(.5, temp.shape[1]), np.arange(.5, temp.shape[0]), calc_dens
 ax.set_ylabel("Depth (m)", fontsize=15)
 ax.set_xlabel("Time", fontsize=15)    
 ax.collections[0].colorbar.set_label("POC respiration  (/d)")
-xticks_ix = np.array(ax.get_xticks()).astype(int)
+xticks_ix = np.linspace(0, len(times)-1, N_pts, dtype=int)
 time_label = times[xticks_ix]
-nelement = len(times)//N_pts
-#time_label = time_label[::nelement]
-ax.xaxis.set_major_locator(plt.MaxNLocator(N_pts * n_years))
-ax.set_xticklabels(time_label, rotation=45, ha = 'right')
+ax.set_xticks(xticks_ix)
+ax.set_xticklabels(time_label, rotation=45, ha='right')
+ticks_ix = np.array(ax.get_yticks()).astype(int)
 yticks_ix = np.array(ax.get_yticks()).astype(int)
 depth_label = yticks_ix / 2
 ax.set_yticklabels(depth_label, rotation=0)
@@ -539,11 +561,38 @@ plt.show()
 
 plt.figure(figsize=(10, 5))
 for i, d in enumerate(depths):
+    max_doc = (doc_all[d, :] / volume[d]).max()   # take max over time
+    print(f"Depth index {d}: max DOC = {max_doc:.2f} mg/L")
     plt.plot(times, doc_all[d, :]/volume [d], label=f'DOC at {labels[i]}', linestyle='-', color=('green' if d == 1 else 'lightgreen'))
 plt.ylabel("DOC (mg/L)")
 plt.xlabel("Time")
+plt.ylim(0, 8)
 plt.legend()
-plt.title("Dissolved Organic Carbon (DOC)")
+plt.title("Dissolved Organic Carbon Total (DOC-tot)")
+plt.show()
+
+plt.figure(figsize=(10, 5))
+for i, d in enumerate(depths):
+    max_doc = (docl[d, :] / volume[d]).max()   # take max over time
+    print(f"Depth index {d}: max DOC = {max_doc:.2f} mg/L")
+    plt.plot(times, docl[d, :]/volume [d], label=f'DOC at {labels[i]}', linestyle='-', color=('green' if d == 1 else 'lightgreen'))
+plt.ylabel("DOC (mg/L)")
+plt.xlabel("Time")
+plt.ylim(0, 8)
+plt.legend()
+plt.title("Dissolved Organic Carbon Laible (DOCl)")
+plt.show()
+
+plt.figure(figsize=(10, 5))
+for i, d in enumerate(depths):
+    max_doc = (docr[d, :] / volume[d]).max()   # take max over time
+    print(f"Depth index {d}: max DOC = {max_doc:.2f} mg/L")
+    plt.plot(times, docr[d, :]/volume [d], label=f'DOC at {labels[i]}', linestyle='-', color=('green' if d == 1 else 'lightgreen'))
+plt.ylabel("DOC (mg/L)")
+plt.xlabel("Time")
+plt.ylim(0, 8)
+plt.legend()
+plt.title("Dissolved Organic Carbon Recalcitrant (DOCr)")
 plt.show()
 
 # Plot POC
@@ -552,6 +601,7 @@ for i, d in enumerate(depths):
     plt.plot(times, poc_all[d, :]/volume[d], label=f'POC at {labels[i]}', linestyle='-', color=('orange' if d == 1 else 'gold'))
 plt.ylabel("POC (mg/L)")
 plt.xlabel("Time")
+plt.ylim(0, 8)
 plt.legend()
 plt.title("Particulate Organic Carbon (POC)")
 plt.show()

@@ -408,8 +408,8 @@ def wq_initial_profile(initfile, nx, dx, depth, volume, startDate):
   #startDate = meteo['date'].min()
   obs = pd.read_csv(initfile)
   obs['datetime'] = pd.to_datetime(obs['datetime'])
-  print(obs.dtypes)
-  print(obs['datetime'].head())
+  #print(obs.dtypes)
+  #print(obs['datetime'].head())
   do_obs = obs.loc[obs['variable'] == 'do_mgl']
   do_obs['ditt'] = abs(do_obs['datetime'] - startDate)
   init_df = do_obs.loc[do_obs['ditt'] == do_obs['ditt'].min()]
@@ -423,7 +423,8 @@ def wq_initial_profile(initfile, nx, dx, depth, volume, startDate):
   do = profile_fun(out_depths)
   
   doc_obs = obs.loc[obs['variable'] == 'doc']
-  #print(doc_obs)
+  #print(doc_obs[['datetime', 'depth', 'observation']].head(20))print("Start date:", startDate)
+  
   doc_obs['ditt'] = abs(doc_obs['datetime'] - startDate)
   init_df = doc_obs.loc[doc_obs['ditt'] == doc_obs['ditt'].min()]
   if init_df.depth.min()>0: #assumed mixed epi, if no 0m available then it pulls from shallowest option
@@ -434,12 +435,15 @@ def wq_initial_profile(initfile, nx, dx, depth, volume, startDate):
     lastRow = init_df.loc[init_df.depth == init_df.depth.max()]
     init_df = pd.concat([init_df, lastRow], ignore_index=True)
     init_df.loc[init_df.index[-1], 'depth'] = max(depth)
+  #print("Chosen profile date:", init_df['datetime'].unique())
+  #print(init_df[['datetime', 'depth', 'observation']])
+  #print(doc_obs)
     
   profile_fun = interp1d(init_df.depth.values, init_df.observation.values)
   out_depths = depth# these aren't actually at the 0, 1, 2, ... values, actually increment by 1.0412; make sure okay
   doc = profile_fun(out_depths)
   
-  u = np.vstack((do * volume, doc* volume)) # * volume
+  u = np.vstack((do * volume, doc*volume)) # * volume
   #print("DOC obs (mg/L):", doc[:10])
  # print("Layer volumes (m³):", volume[:10])
   #print("DOC * volume (raw, mg* m³):", (doc * volume)[:10])
@@ -472,7 +476,10 @@ def get_hypsography(hypsofile, dx, nx):
   depth = 1/2 * (depth[:-1] + depth[1:])
   area = 1/2 * (area[:-1] + area[1:])
   
-  return([area, depth, volume])
+  total_volume=np.sum(volume)
+  hypso_weight=volume/total_volume
+  
+  return([area, depth, volume, hypso_weight])
 
 def longwave(cc, sigma, Tair, ea, emissivity, Jlw):  # longwave radiation into
   Tair = Tair + 273.15
@@ -1959,6 +1966,7 @@ def prodcons_module(
         r = np.zeros_like(a[:, 0], dtype=float)
         
         consumption =  theta_r**(u-20) * (y[0]/volume)/(k_half +  y[0]/volume)
+      
         
         ci =0
         # Get the production and destruction term:
@@ -2003,6 +2011,7 @@ def prodcons_module(
         y = np.linalg.solve(a, r)
         # breakpoint()
         return [y, 86400 * resp[0] * consumption, 86400 * resp[1] * consumption, 86400 * resp[2] * consumption]
+    
 
     docr_respiration = o2 * 0.0
     docl_respiration = o2 * 0.0
@@ -2206,6 +2215,7 @@ def run_wq_model(
   area,
   volume,
   depth,
+  hypso_weight,
   zmax,
   nx,
   dt,
@@ -2279,7 +2289,7 @@ def run_wq_model(
   prop_oc_pocr = 0.06, #0.05 inflow
   prop_oc_pocl = 0.12, #0.1 inflow,
   W_str = None,
-  training_data_path = None,
+  training_data_path=None,
   timelabels = None):
     
   ## linearization of driver data, so model can have dynamic step
@@ -2372,9 +2382,9 @@ def run_wq_model(
       return kd_light
   
     
-   #Calculating per-depth OC load #### i took this out 4/29, put back in 5/13
-  perdepth_oc = oc_load_input / (thermo_dep*2)# int(outflow_depth * 2)
-  #perdepth_oc = oc_load_input
+   #Calculating per-depth OC load wiht hypsometric weighting
+  #perdepth_oc = oc_load_input / (max(depth)*2)# int(outflow_depth * 2)
+  perdepth_oc = oc_load_input*hypso_weight
   perdepth_docr = perdepth_oc * prop_oc_docr
   perdepth_docl = perdepth_oc * prop_oc_docl
   perdepth_pocr = perdepth_oc * prop_oc_pocl
@@ -2413,11 +2423,11 @@ def run_wq_model(
     
     # OC loading
     
-    for i in range(0, int(outflow_depth * 2)): ####i took this out 4/29, put back in 5/13
-        docr[i] += perdepth_docr
-        docl[i] += perdepth_docl
-        pocr[i] += perdepth_pocr
-        pocl[i] += perdepth_pocl
+    for i in range(len(depth)): ####i took this out 4/29, put back in 5/13
+        docr[i] += perdepth_docr[i]
+        docl[i] += perdepth_docl[i]
+        pocr[i] += perdepth_pocr[i]
+        pocl[i] += perdepth_pocl[i]
     #docr = [x+perdepth_docr for x in docr]
     #docl = [x+perdepth_docl for x in docl]
     #pocr = [x+perdepth_pocr for x in pocr]
@@ -2761,15 +2771,17 @@ def run_wq_model(
     
     
     ## OC Outflow
-    # Calculating per-depth OC load
-    outflow_layers = outflow_depth * 2
-    volume_out = ((1 / hydro_res_time_hr) * sum(volume)) / outflow_layers
+    # Calculating per-depth OC load- with hypsometric weighting
+    #outflow_layers = outflow_depth * 2
+    total_outflow = ((1 / hydro_res_time_hr) * sum(volume))
+    volume_out=total_outflow*hypso_weight
+ 
     
-    for i in range(0,int(outflow_layers)):
-        docr[i] -= docr[i] / volume[i] * volume_out
-        docl[i] -= docl[i] / volume[i] * volume_out
-        pocr[i] -= pocr[i] / volume[i] * volume_out
-        pocl[i] -= pocl[i] / volume[i] * volume_out
+    for i in range(len(depth)):
+        docr[i] -= docr[i] / volume[i] * volume_out[i]
+        docl[i] -= docl[i] / volume[i] * volume_out[i]
+        pocr[i] -= pocr[i] / volume[i] * volume_out[i]
+        pocl[i] -= pocl[i] / volume[i] * volume_out[i]
     #
     #print(type(pocl))
     
