@@ -35,14 +35,15 @@ meteo_all = provide_meteorology(meteofile = 'Peter Inputs/2022/nldas_hourly_Casc
 pd.DataFrame(meteo_all[0]).to_csv("Peter Inputs/2022/meteorology_input2.csv", index = False)
                      
 ## time step discretization 
-#for 2024 only
+
+#for 2024 only data-use same meteofile
 n_years = 0.05#0.307
 hydrodynamic_timestep = 24 * dt
 total_runtime =  (365 * n_years) * hydrodynamic_timestep/dt  
 startTime =  21399 # DOY in 2016 * 24 hours- adjust for PYthon starting on 0 index 2024-06-10 07:00:00
 endTime =  26268#24103# * hydrodynamic_timestep/dt) - 1
 
-#burn in with 2022
+#burn in with 2022-use same meteo file
 #n_years = 2.32#0.307
 #hydrodynamic_timestep = 24 * dt
 #total_runtime =  (365 * n_years) * hydrodynamic_timestep/dt  
